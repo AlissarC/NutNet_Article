@@ -10,7 +10,9 @@ library(dplyr)
 library(plyr)
 library(RColorBrewer)
 library(multcompView)
+library(ggstatsplot)
 library(tidyverse)
+library(ggstatsplot)
 library(ggplot2)
 library(lme4)
 library(car)
@@ -31,6 +33,7 @@ library(MuMIn)
 library(boot)
 library(corrr)
 library(ggcorrplot)
+library(FactoMineR)
 library(factoextra)
 library(ggfortify)
 library(lavaan)
@@ -47,80 +50,11 @@ library(multcompView)
 library(nlme)
 library(cowplot)
 
-################################ Statistics #########################################################################
-### function to calculate relative importance for mixed models 
-### from https://gist.github.com/BERENZ/e9b581a4b7160357934e
-calc.relip.mm <- function(model,type = 'lmg') {
-  if (!isLMM(model) & !isGLMM(model)) {
-    stop('Currently supports only lmer/glmer objects', call. = FALSE)
-  }
-  require(lme4)
-  X <- getME(model,'X')
-  X <- X[ , -1]
-  Y <- getME(model, 'y')
-  s_resid <- sigma(model)
-  s_effect <- getME(model, 'theta') * s_resid
-  s2 <- sum(s_resid^2, s_effect^2)
-  V <- Diagonal(x = s2, n = nrow(X))
-  YX <- cbind(Y, X)
-  cov_XY <- solve(t(YX) %*% solve(V) %*% as.matrix(YX))
-  colnames(cov_XY) <- rownames(cov_XY) <- colnames(YX)
-  importances <- calc.relimp(as.matrix(cov_XY), rela = F, type = type)
-  return(importances)
-}
-
-calc.relip.boot.mm <- function(model,type = 'lmg') {
-  if (!isLMM(model) & !isGLMM(model)) {
-    stop('Currently supports only lmer/glmer objects', call. = FALSE)
-  }
-  require(lme4)
-  X <- getME(model,'X')
-  X <- X[ , -1]
-  Y <- getME(model, 'y')
-  s_resid <- sigma(model)
-  s_effect <- getME(model, 'theta') * s_resid
-  s2 <- sum(s_resid^2, s_effect^2)
-  V <- Diagonal(x = s2, n = nrow(X))
-  YX <- cbind(Y, X)
-  cov_XY <- solve(t(YX) %*% solve(V) %*% as.matrix(YX))
-  colnames(cov_XY) <- rownames(cov_XY) <- colnames(YX)
-  bootresults <- boot.relimp(as.matrix(cov_XY), b=1000, rela = F, type = type)
-  importances <- booteval.relimp(bootresults, norank=T)
-  return(importances)
-}
-
-multiplot <- function(..., plotlist=NULL, cols) {
-  require(grid)
-  
-  # Make a list from the ... arguments and plotlist
-  plots <- c(list(...), plotlist)
-  
-  numPlots = length(plots)
-  
-  # Make the panel
-  plotCols = cols                          # Number of columns of plots
-  plotRows = ceiling(numPlots/plotCols) # Number of rows needed, calculated from # of cols
-  
-  # Set up the page
-  grid.newpage()
-  pushViewport(viewport(layout = grid.layout(plotRows, plotCols)))
-  vplayout <- function(x, y)
-    viewport(layout.pos.row = x, layout.pos.col = y)
-  
-  # Make each plot, in the correct location
-  for (i in 1:numPlots) {
-    curRow = ceiling(i/plotCols)
-    curCol = (i-1) %% plotCols + 1
-    print(plots[[i]], vp = vplayout(curRow, curCol ))
-  }
-  
-}
-
 
 ####################### script to explore and analyse delta Nmass and Narea and delta above ground biomass between plots
 #### that received N and plots that did not : N-control, NK-K, NP-P, NPK-PK ####################################
 
-leaf_analysis <- read.csv("./data/traits_nofence_chi_sub.csv")
+leaf_analysis <- read.csv("./output/traits_nofence_chi_sub.csv")
 names(leaf_analysis)
 length(unique(leaf_analysis$Taxon)) # 196
 #################################### calculate Delta Nmass per Taxon  ######################################
@@ -150,7 +84,7 @@ Delta$delta_spp_live_mass <- ((Delta$spp_live_mass.y - Delta$spp_live_mass.x) / 
 
 #### selection of high_N columns, but we will use only site characteristics and climate + taxon characteristics, don't use the other numeric columns concerning plots since they are for high N trt only ############
 names(Delta)
-delta_subset<- subset(Delta, select = c(1: 154, 304:306))
+delta_subset<- subset(Delta, select = c(1:65, 128:130))
 colnames(delta_subset) <- sub("\\.x$", "", colnames(delta_subset)) ## remove .x  
 names(delta_subset)
 nrow(delta_subset) # 894
@@ -176,6 +110,7 @@ deltanmass_mad_data <- subset(delta_subset,
 nrow(deltanmass_mad_data) # 524 
 hist(deltanmass_mad_data$delta_nmass) # normal dist
 names(deltanmass_mad_data)
+length(table(deltanmass_mad_data$Taxon)) # 87
 
 ######################## delta nmass analysis #########################################################
 #### Hyp 1: Cold temperature, drought and PAR increase deltanmass, deltanmass N-fixers < fixers, deltanmass C4 < C3 #######################
@@ -227,6 +162,8 @@ delta_nmass_model_aridity$p <- as.matrix(Anova(deltanmass_lmer_aridity))[1:8, 3]
 delta_nmass_model_aridity$RelImp <- as.matrix(calc.relip.mm(deltanmass_lmer_aridity)$lmg)[1:8]
 delta_nmass_model_aridity$RelImp <- delta_nmass_model_aridity$RelImp * 100
 delta_nmass_model_aridity
+
+write.csv(delta_nmass_model_aridity, "./output/delta_nmass_model_aridity.csv")
 
 ###################### # percentage increase of delta nmass in plots receiving P compared to plots not receiving P (NP-P)
 (summary(emmeans(deltanmass_lmer_aridity, ~Ptrt_fac))[2,2] - summary(emmeans(deltanmass_lmer_aridity, ~Ptrt_fac))[1,2])/
@@ -362,7 +299,7 @@ aridity.regline <- data.frame(emmeans(deltanmass_lmer_aridity,"aridity",
     xlab("MI"))
 
 aridity_plot
-
+ggsave("./Figures/aridity_plot.tiff", plot = aridity_plot)
 ######################################################################################################
 ################ temperature regression ############
 
@@ -395,7 +332,7 @@ tmp.regline <- data.frame(emmeans(deltanmass_lmer_aridity,"tmp",
     xlab(expression (italic('Tg') ['°C']))) 
 
 tmp_plot
-
+ggsave("./Figures/tmp_plot.tiff", plot = tmp_plot)
 ######################################################################################################
 ################ PAR regression ############
 
@@ -411,7 +348,12 @@ PAR.regline <- data.frame(emmeans(deltanmass_lmer_aridity,"par2_gs",
     
     scale_colour_manual(values = c("darkblue", "skyblue", 'salmon4', 'orange'))+
     scale_shape_manual(values = c(1, 8)) +
-
+    
+   # geom_smooth(data = PAR.regline, aes(y = emmean), 
+    #            col = 'black', lwd = 2, alpha = 0.8) +
+    
+   # geom_ribbon(data = PAR.regline, aes(y=emmean, ymin = lower.CL, ymax = upper.CL), fill = "gray", alpha = 0.3)+ 
+    
     #scale_x_continuous(limits = c(3, 21)) +
     theme(legend.position = "none", 
           axis.title.y = element_text(size = 40, colour = 'black'),
@@ -425,6 +367,8 @@ PAR.regline <- data.frame(emmeans(deltanmass_lmer_aridity,"par2_gs",
 
 
 PAR_plot
+
+ggsave("./Figures/PAR_plot.tiff", plot = PAR_plot)
 
 ############ merg regression plots 
 rel_widths <- c(2, 2, 2)
@@ -442,6 +386,19 @@ final_plot_deltanmass <- plot_grid(
 
 final_plot_deltanmass <- final_plot_deltanmass + theme(text = element_text(family = "Helvetica"))
 
+
+############### Save as tiff with 600 dpi 
+ggsave("./Figures/TIFF/final_plot_deltanmass.tiff", final_plot_deltanmass, 
+       width = 45, height = 25, units = "cm", dpi = 600, type = "cairo")
+
+
+############## save as jpeg
+ggsave("./Figures/final_plot_deltanmass.jpeg", plot = final_plot_deltanmass, 
+       width = 55, height = 30, units = "cm")
+
+################## save as PDF 
+ggsave("./Figures/final_plot_deltanmass.pdf", final_plot_deltanmass, 
+       width = 45, height = 25, units = "cm")
 
 ######## Structural equation model for deltanmass and delta ABG corrected by the max cover ##################
 #############################################################################################################
@@ -469,7 +426,8 @@ delta_sem_Mad <- subset(delta_subset,
 nrow(delta_sem_Mad) # 524
 names(delta_sem_Mad)
 
-subset_SEM = delta_sem_Mad [ , c(8,116,117,88,102,132,155:160)] # selection of variables to be included in the structural equation model 
+subset_SEM  <- subset(delta_sem_Mad, select = c(site_code,Taxon, block, tmp, par2_gs, aridity, 
+                                                delta_nmass,delta_spp_live_mass,delta_narea, Ptrt_fac,Ktrt_fac,Nfix_level,ps_level))
 names(subset_SEM)
 
 subset_SEM <- na.omit(subset_SEM)
@@ -575,6 +533,7 @@ delta_narea_model_aridity$RelImp <- as.matrix(calc.relip.mm(deltanarea_lmer_arid
 delta_narea_model_aridity$RelImp <- delta_narea_model_aridity$RelImp * 100
 delta_narea_model_aridity
 
+write.csv(delta_narea_model_aridity, "./output/delta_narea_model_aridity.csv")
 
 ###################### # percentage increase of delta narea in plots receiving P compared to plots not receiving P (NP-P)
 (summary(emmeans(deltanarea_lmer_aridity, ~Ptrt_fac))[2,2] - summary(emmeans(deltanarea_lmer_aridity, ~Ptrt_fac))[1,2])/
@@ -754,7 +713,11 @@ PAR.regline <- data.frame(emmeans(deltanarea_lmer_aridity,"par2_gs",
     # scale_color_gradient(low = "darkblue", high = "lightblue") +
     scale_colour_manual(values = c("darkblue", "skyblue", 'salmon4', 'orange'))+
     scale_shape_manual(values = c(1,8))  +
-     #scale_x_continuous(limits = c(3, 21)) +
+    geom_smooth(data = PAR.regline, aes(y = emmean), 
+                col = 'black', lwd = 2, alpha = 0.8) +
+    
+    geom_ribbon(data = PAR.regline, aes(y=emmean, ymin = lower.CL, ymax = upper.CL), fill = "gray", alpha = 0.3)+ 
+    #scale_x_continuous(limits = c(3, 21)) +
     theme(legend.position = "none", 
           axis.title.y = element_text(size = 40, colour = 'black'),
           axis.title.x = element_text(size = 40, colour = 'black'),
@@ -786,5 +749,18 @@ final_plot_delta_narea
 
 final_plot_delta_narea <- final_plot_delta_narea + theme(text = element_text(family = "Helvetica"))
 
+
+############### Save as tiff with 600 dpi 
+ggsave("./Figures/TIFF/final_plot_delta_narea.tiff", final_plot_delta_narea, 
+       width = 45, height = 25, units = "cm", dpi = 600, type = "cairo")
+
+
+############## save as jpeg
+ggsave("./Figures/final_plot_delta_narea.jpeg", plot = ffinal_plot_delta_narea, 
+       width = 55, height = 30, units = "cm")
+
+################## save as PDF 
+ggsave("./Figures/final_plot_delta_narea.pdf", final_plot_delta_narea, 
+       width = 45, height = 25, units = "cm")
 
 

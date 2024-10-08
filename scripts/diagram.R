@@ -1,7 +1,6 @@
 
 ################## Whitakker diagram to make Figure S1  ############################ 
 library(ggplot2)
-install_github("valentinitnelav/plotbiomes")
 library(plotbiomes)
 
 whittaker_plot <- whittaker_base_plot() 
@@ -60,7 +59,7 @@ whittaker_ggplot_data
 tiff("./Figures/TIFF/whittaker_ggplot_data.tiff", 
      width = 30, height = 20, units = "cm", res = 800)
 print(whittaker_ggplot_data)
-dev.off()
+
 
 ####### Save as PDF #####################
 ggsave("./Figures/PDF/whittaker_ggplot_data.pdf", whittaker_ggplot_data, width = 10, height = 8, units = "in")

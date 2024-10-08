@@ -1,6 +1,7 @@
 #########################################
 # packages necessary
 #########################################
+library(tidyr)
 library(dplyr)
 library(tidyverse)
 library(ggplot2)
@@ -11,6 +12,7 @@ library(RColorBrewer)
 library(multcompView)
 library(nlme)
 library(marginaleffects)
+library(piecewiseSEM)
 library(rstantools)
 library(multcomp)
 library(treemapify)
@@ -24,6 +26,7 @@ library(MuMIn)
 library(boot)
 library(corrr)
 library(ggcorrplot)
+library(FactoMineR)
 library(factoextra)
 library(ggfortify)
 library(patchwork)
@@ -100,7 +103,7 @@ multiplot <- function(..., plotlist=NULL, cols) {
 
 ############# load data #############################################################################
 
-leaf_analysis <- read.csv("data/traits_nofence_chi_sub.csv")
+leaf_analysis <- read.csv("./output/traits_nofence_chi_sub.csv")
 names(leaf_analysis)
 length(unique(leaf_analysis$Taxon)) # 196
 
@@ -112,7 +115,8 @@ calculate_mean <- function(x) if (is.numeric(x)) mean(x, na.rm = TRUE) else firs
 summary_table <- selected_data %>%
   group_by(site_code) %>%
   summarise_all(calculate_mean)
-summary_table # for table S1
+summary_table
+write.csv(summary_table, "./output/summary_table.csv")
 
 ######################## linear mixed effects model for Nmass #######################################
 #####################################################################################################
@@ -172,6 +176,9 @@ Nmass_model$p <- as.matrix(Anova(leafNmass_lmer))[1:13, 3]
 Nmass_model$RelImp <- as.matrix(calc.relip.mm(leafNmass_lmer)$lmg)[1:13]
 Nmass_model$RelImp <- Nmass_model$RelImp * 100
 Nmass_model
+
+write.csv(Nmass_model, "./output/Nmass_model.csv")
+
 
 #### soil nitrogen effect for the tables in supplementary information 
 # percentage increase of Nmass in plots receiving N compared to plots not receiving N
@@ -265,6 +272,18 @@ nmass_violin <- ggplot(data = leaf_analysis,
 nmass_violin
 nmass_violin <- nmass_violin + theme(text = element_text(family = "Helvetica"))
 
+############### Save as tiff with 600 dpi 
+tiff("./Figures/TIFF/nmass_violin.tiff", 
+       width = 30, height = 20, units = "cm", res = 800)
+print(nmass_violin)
+dev.off()
+####### Save as PDF #####################
+ggsave("./Figures/PDF/nmass_violin_plot.pdf", nmass_violin, width = 10, height = 8, units = "in")
+
+## or as jpeg ##########################
+ggsave("./Figures/nmass_violin.jpeg", plot = nmass_violin, 
+       width = 30, height = 20, units = "cm")
+
 ################################## Tree map N mass ###################################################
 
 calc.relip.mm(leafNmass_lmer)$lmg
@@ -355,6 +374,21 @@ nmass_tm_test <- nmass_tm %>%
 nmass_treemap
 nmass_treemap <- nmass_treemap + theme(text = element_text(family = "Helvetica"))
 
+############### Save as tiff with 600 dpi 
+tiff("./Figures/TIFF/nmass_treemap.tiff", 
+     width = 30, height = 20, units = "cm", res = 800)
+print(nmass_treemap)
+dev.off()
+
+####### Save as PDF #####################
+ggsave("./Figures/PDF/nmass_treemap.pdf", nmass_treemap, width = 10, height = 8, units = "in")
+
+
+######### Save as JPEG ##################################################
+ggsave("./Figures/nmass_treemap.jpeg", plot = nmass_treemap, 
+       width = 30, height = 20, units = "cm")
+
+
 ### linear mixed effects model for Narea ####################
 ###############################################################################
 hist(leaf_analysis$lognarea) # normal distribution
@@ -407,6 +441,8 @@ Narea_model$RelImp <- as.matrix(calc.relip.mm(leafnarea_lmer)$lmg)[1:13]
 Narea_model$RelImp <- Narea_model$RelImp * 100
 Narea_model
 
+
+write.csv(Narea_model, "./output/Narea_model.csv")
 
 ################################# Figure comparison between treatments ######################## 
 
@@ -508,6 +544,22 @@ narea_violin <- ggplot(data = leaf_analysis,
 narea_violin
 narea_violin <- narea_violin + theme(text = element_text(family = "Helvetica"))
 
+############### Save as tiff with 600 dpi 
+tiff("./Figures/TIFF/narea_violin.tiff", 
+     width = 30, height = 20, units = "cm", res = 800)
+print(narea_violin)
+dev.off()
+
+####### Save as PDF #####################
+ggsave("./Figures/PDF/narea_violin.pdf", narea_violin, width = 10, height = 8, units = "in")
+
+####################### Save as jpeg ##################
+ggsave("./Figures/narea_violin.jpeg", plot = narea_violin, 
+       width = 30, height = 20, units = "cm")
+
+############## save as tiff
+ggsave("./Figures/narea_violin.tiff", narea_violin, 
+       width = 45, height = 25, units = "cm", dpi = 600, type = "cairo")
 
 ################################## Tree map Narea ###################################################
 
@@ -592,3 +644,20 @@ narea_tm_test <- narea_tm %>%
     scale_y_continuous(expand = c(0, 0)))
 
 narea_treemap <- narea_treemap + theme(text = element_text(family = "Helvetica"))
+
+############### Save as tiff with 600 dpi 
+tiff("./Figures/TIFF/narea_treemap.tiff", 
+     width = 30, height = 20, units = "cm", res = 800)
+print(narea_treemap)
+dev.off()
+
+####### Save as PDF #####################
+ggsave("./Figures/PDF/narea_treemap.pdf", narea_treemap, width = 10, height = 8, units = "in")
+
+############ Save as Jpeg 
+ggsave("./Figures/narea_treemap.jpeg", plot = narea_treemap, 
+       width = 30, height = 20, units = "cm")
+
+############## save as tiff
+ggsave("./Figures/narea_treemap.tiff", narea_treemap, 
+       width = 45, height = 25, units = "cm", dpi = 600, type = "cairo")

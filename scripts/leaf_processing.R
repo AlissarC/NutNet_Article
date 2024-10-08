@@ -1,7 +1,9 @@
 
 ################################################# Processing  ##########################################
 ########################################################################################################
-traits <- read.csv("data/traits.csv")
+
+traits <- read.csv("./input/traits.csv")
+names(traits)
 
 names(traits)
 nrow(traits) # 2788
@@ -44,26 +46,9 @@ traits$nmass = traits$leaf_pct_N
 hist(traits$nmass)
 hist(traits$leaf_pct_N)
 
-### calculate N: P ratio in leaves #############
-traits$leaf_pct_P = traits$leaf_ppm_P/10000 ## transform into percentage
-traits$leaf_N_P = traits$leaf_pct_N/traits$leaf_pct_P
-
-### calculate C: N ratio in leaves #############
-traits$leaf_N_C = traits$leaf_pct_C/traits$leaf_pct_N
-
-
-### calculate lai per plot #############
-traits$lai = -log(traits$Ground_PAR / traits$Ambient_PAR) / 0.86 # from: http://manuals.decagon.com/Manuals/10242_Accupar%20LP80_Web.pdf page 41
-hist(traits$lai)
-
-### calculate par per leaf area to assume par absorbed is reduced in dense canopies: calculation per plot
-traits$par_per_leaf_area = traits$par2_gs * ((1 - exp(-0.5 * traits$lai)) / traits$lai) # from Dong et al. (2007) eqn 2
-hist(traits$par_per_leaf_area)
-
 ### calculate biomass for each species depending on the percentage max-cover for each species ###############
 traits$spp_live_mass = traits$live_mass * (traits$max_cover / 100)
 hist(traits$spp_live_mass)
-
 
 ## calculate big delta C13 from small delta 
 traits$delta = ((-0.008 - traits$leaf_C13_delta_PDB * 0.001) / (1 + traits$leaf_C13_delta_PDB * 0.001)) * 1000
@@ -77,7 +62,6 @@ hist(traits$chi)
 ##### calculate chi for C4 plants #################### 
 traits$chi[traits$photosynthetic_pathway == 'C4'] = 
   (traits$delta[traits$photosynthetic_pathway == 'C4'] * 0.001 - 0.0044) / ((-0.0057 + 0.03*0.4) - 0.0044)
-
 
 hist(traits$chi)
 
@@ -104,7 +88,7 @@ hist(traits$log_spp_live_mass)
 traits_chi_sub <- subset(traits, chi > 0.1 & chi < 0.95)
 nrow(traits_chi_sub) ### 2106
 
-table(traits_chi_sub$pft) ### 162 C4 remains 
+
 hist(traits_chi_sub$chi) # quasi normal distribution 
 hist(traits_chi_sub$aridity) 
 
@@ -124,12 +108,9 @@ traits_nofence_chi_sub = subset(traits_chi_sub, fence == "no")
 traits_nofence_chi_sub$fence
 nrow(traits_nofence_chi_sub) ## 1752
 length(unique(traits_nofence_chi_sub$Taxon)) # 196 species 
-length(unique(traits_chi_sub$site_code)) # 26 sites
+length(unique(traits_nofence_chi_sub$site_code)) # 26 sites
 
-min(traits_chi_sub$aridity) # 0.14
-max(traits_chi_sub$aridity) # 2.32
 
-write.csv(traits, "output/traits.csv")
-write.csv(traits_chi_sub, "output/traits_chi_sub.csv")
-write.csv(traits_nofence_chi_sub, "data/traits_nofence_chi_sub.csv")
+view(traits_nofence_chi_sub)
+write.csv(traits_nofence_chi_sub, "./output/traits_nofence_chi_sub.csv")
 
